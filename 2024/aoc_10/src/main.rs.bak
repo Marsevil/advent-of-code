@@ -1,0 +1,126 @@
+use std::io::Read;
+
+use ndarray::prelude::*;
+
+type ElevationT = u8;
+type PosT = [u8; 2];
+type ElevationMap = Array2<ElevationT>;
+
+const MAX_ELEVATION: ElevationT = 9;
+
+fn get_input_string() -> String {
+    let mut input = String::default();
+    std::io::stdin()
+        .read_to_string(&mut input)
+        .expect("Can't read from stdin");
+    input
+}
+
+fn parse_input(input: &str) -> ElevationMap {
+    let chars = input.lines().enumerate().flat_map(|(line_idx, line)| {
+        line.chars()
+            .enumerate()
+            .map(move |(col_idx, c)| (col_idx, line_idx, c))
+    });
+    let dim = chars
+        .clone()
+        .last()
+        .map(|(max_x, max_y, _)| (max_y + 1, max_x + 1))
+        .expect("input should contains at least one line");
+
+    let mut map = ElevationMap::zeros(dim);
+    for (x, y, c) in chars {
+        let elevation = c
+            .to_digit(10)
+            .and_then(|val| ElevationT::try_from(val).ok())
+            .expect("elvation should be digit between 0 and 9");
+        map[(y, x)] = elevation;
+    }
+
+    map
+}
+
+fn process_trail(map: &ElevationMap) -> Array2<u8> {
+    let mut trail_heads = Vec::<PosT>::default();
+
+    for (pos, val) in map.indexed_iter() {
+        if *val == 0 {
+            trail_heads.push([
+                pos.0.try_into().expect("should fit in u8"),
+                pos.1.try_into().expect("should fit in u8"),
+            ]);
+        }
+    }
+
+    let mut exploration_buf = Vec::<(PosT, ElevationT)>::default();
+    let mut tail_counts = Array2::<u8>::zeros(map.dim());
+    for head in trail_heads.into_iter() {
+        explore_trail(map, &mut tail_counts, head, &mut exploration_buf);
+    }
+
+    tail_counts
+}
+
+fn enqueue_4_neighbours(
+    exploration_queue: &mut Vec<(PosT, ElevationT)>,
+    pos: PosT,
+    expected_value: ElevationT,
+) {
+    if let Some(pos0) = pos[0].checked_add(1) {
+        exploration_queue.push(([pos0, pos[1]], expected_value));
+    }
+    if let Some(pos0) = pos[0].checked_sub(1) {
+        exploration_queue.push(([pos0, pos[1]], expected_value));
+    }
+    if let Some(pos1) = pos[1].checked_add(1) {
+        exploration_queue.push(([pos[0], pos1], expected_value));
+    }
+    if let Some(pos1) = pos[1].checked_sub(1) {
+        exploration_queue.push(([pos[0], pos1], expected_value));
+    }
+}
+
+fn explore_trail(
+    map: &ElevationMap,
+    tail_counts: &mut Array2<u8>,
+    start_pos: PosT,
+    exploration_queue: &mut Vec<(PosT, ElevationT)>,
+) {
+    enqueue_4_neighbours(exploration_queue, start_pos, 1);
+
+    loop {
+        let Some((pos, expected_value)) = exploration_queue.pop() else {
+            break;
+        };
+        let Some(value) = map.get([pos[0].into(), pos[1].into()]) else {
+            continue;
+        };
+        if *value != expected_value {
+            continue;
+        }
+
+        if *value == MAX_ELEVATION {
+            let cell = tail_counts
+                .get_mut([pos[0].into(), pos[1].into()])
+                .expect("out of bound");
+            *cell += 1;
+            continue;
+        }
+
+        let next_expected_value = expected_value + 1;
+        enqueue_4_neighbours(exploration_queue, pos, next_expected_value);
+    }
+}
+
+fn main() {
+    let input = get_input_string();
+    let map = parse_input(&input);
+
+    let tail_counts = process_trail(&map);
+
+    let score = tail_counts
+        .iter()
+        .fold(0u16, |acc, val| acc + u16::from(*val));
+
+    println!("score = {}", score);
+}
