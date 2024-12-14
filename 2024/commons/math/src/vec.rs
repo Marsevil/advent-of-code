@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, AddAssign, Mul, Sub};
 
 pub type Vec2Coord = i16;
 
@@ -30,6 +30,12 @@ impl Add for Vec2 {
 
     fn add(self, rhs: Self) -> Self::Output {
         Self::from([self.x() + rhs.x(), self.y() + rhs.y()])
+    }
+}
+impl AddAssign for Vec2 {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0[0] += rhs.x();
+        self.0[1] += rhs.y();
     }
 }
 impl Mul<Vec2Coord> for Vec2 {

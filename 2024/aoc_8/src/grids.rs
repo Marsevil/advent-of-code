@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Iter, HashMap, HashSet};
 
-use crate::vec::Vec2;
+use math::Vec2;
 
 mod errors {
     use thiserror::Error;

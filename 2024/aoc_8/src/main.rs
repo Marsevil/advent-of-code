@@ -4,10 +4,9 @@ use std::{
 };
 
 mod grids;
-mod vec;
 
 use grids::{BinGrid, Grid};
-use vec::{Vec2, Vec2Coord};
+use math::{Vec2, Vec2Coord};
 
 fn parse_input(input: &str) -> Grid {
     let chars = input.lines().enumerate().flat_map(|(row, line)| {
